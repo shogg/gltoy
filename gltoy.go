@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/banthar/Go-SDL/sdl"
-	"github.com/banthar/Go-OpenGL/gl"
+	"github.com/banthar/gl"
 	"github.com/shogg/glfps"
 	"io/ioutil"
 )
