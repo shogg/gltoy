@@ -126,14 +126,20 @@ float scene(vec3 p)
     p -= vec3(3.0, 0.0, 3.0);
 #endif
 
+
     p.x = abs(p.x);  // mirror in X to reduce no. of primitives
 
-    p -= vec3(0.0, 1.0, 0.0);
+    p -= vec3(0.0, 1.1, 0.0);
     //vec3 hp = rotateY(p, sin(time*0.5)*0.5);
     vec3 hp = p; //vec3(p.x, p.y-1.1, p.z);
 
+    // floor
+    d = plane(p, vec3(0.0, 1.0, 0.0), vec3(0.0, -2.0, 0.0));
+
+	//p = rotateX(p, p.y * sin(time)*.4);
+
     // head
-    d = sphere(p, 1.0);
+    d = _union(d, sphere(p, 1.0));
     //d = halfSphere(hp, 0.95);
 
     // eyes
@@ -157,9 +163,6 @@ float scene(vec3 p)
     // legs
     d = _union(d, capsuleY(p - vec3(0.4, -1.8, 0.0), 0.2, 0.5));
     //d = _union(d, capsuleY(p - vec3(-0.4, -1.8, 0.0), 0.2, 0.5));
-
-    // floor
-    d = _union(d, plane(p, vec3(0.0, 1.0, 0.0), vec3(0.0, -2.0, 0.0)));
 
     return d;
 }
@@ -200,6 +203,27 @@ float ambientOcclusion(vec3 p, vec3 n)
     return clamp(1.0 - a, 0.0, 1.0);
 }
 
+float softShadow(vec3 p, vec3 lightPos)
+{
+	float k = 4.0;
+	float a = 1.0;
+	float weight = 1.0;
+	vec3 ray = lightPos - p;
+	float rayLen = length(ray);
+	ray = normalize(ray);
+	for(float s = .05; s < rayLen; ) {
+
+		float d = scene(p + ray * s);
+		if(d < .001) { return 0.0; }
+
+		a = min(a, k*d/s);
+
+		s += d;
+	}
+
+	return a;
+}
+
 // lighting
 vec3 shade(vec3 pos, vec3 n, vec3 eyePos)
 {
@@ -217,18 +241,19 @@ vec3 shade(vec3 pos, vec3 n, vec3 eyePos)
 
     float fresnel = pow(1.0 - dot(n, v), 5.0);
     float ao = ambientOcclusion(pos, n);
+	float shadow = softShadow(pos, lightPos);
 
 //    return vec3(diff*ao) * color + vec3(spec + fresnel*0.5);
 //    return vec3(diff) * color + vec3(spec + fresnel*0.5);
 //    return vec3(diff*ao) * color + vec3(spec + 0.2*fresnel);
-    return diff * ao * color + spec + fresnel*0.2;
+    return diff * shadow * color + spec + fresnel*0.2;
 //    return vec3(diff*ao) * color + spec + vec3(fresnel)*0.5;
 }
 
 // trace ray using sphere tracing
 vec3 trace(vec3 ro, vec3 rd, out bool hit)
 {
-    const int maxSteps = 44;
+    const int maxSteps = 104;
     const float hitThreshold = 0.001;
     hit = false;
     vec3 pos = ro + rd;
